@@ -1,0 +1,21 @@
+{
+  "name": "Love4Lili - 情侣约会记录",
+  "short_name": "Love4Lili",
+  "description": "专为情侣设计的约会记录应用",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFF8F0",
+  "theme_color": "#FF6B9D",
+  "orientation": "portrait-primary",
+  "categories": ["lifestyle", "social"],
+  "lang": "zh-CN",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "heart.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

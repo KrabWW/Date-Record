@@ -1,0 +1,21 @@
+{
+  "name": "love4lili",
+  "version": "1.0.0",
+  "description": "情侣约会记录应用MVP版本",
+  "main": "server/server.js",
+  "scripts": {
+    "dev": "concurrently \"npm run server:dev\" \"npm run client:dev\"",
+    "server:dev": "cd server && npm run dev",
+    "client:dev": "cd client && npm run dev",
+    "build": "cd client && npm run build",
+    "start": "cd server && npm start",
+    "setup": "npm install && cd server && npm install && cd ../client && npm install",
+    "db:init": "cd server && node scripts/initDatabase.js"
+  },
+  "keywords": ["couple", "dating", "record", "love", "react", "nodejs"],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  }
+}

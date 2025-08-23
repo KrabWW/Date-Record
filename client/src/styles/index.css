@@ -1,0 +1,207 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+/* 基础样式 */
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  
+  /* 移动端触摸优化 */
+  button, input, select, textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* iOS安全区域适配 */
+  .safe-area-padding {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* 组件样式 */
+@layer components {
+  /* 按钮样式 - 改善触摸目标大小 */
+  .btn-primary {
+    @apply bg-gradient-to-r from-love-pink to-love-purple text-white font-medium py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5 active:translate-y-0 min-h-[44px] min-w-[44px];
+  }
+  
+  .btn-secondary {
+    @apply bg-white text-love-pink border-2 border-love-pink font-medium py-4 px-6 rounded-xl hover:bg-love-pink hover:text-white transition-all duration-200 min-h-[44px] min-w-[44px];
+  }
+  
+  .btn-ghost {
+    @apply text-love-pink font-medium py-3 px-4 rounded-lg hover:bg-love-pink hover:bg-opacity-10 transition-all duration-200 min-h-[44px] min-w-[44px];
+  }
+  
+  /* 卡片样式 */
+  .card {
+    @apply bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-200;
+  }
+  
+  .card-interactive {
+    @apply card hover:shadow-lg transform hover:-translate-y-1 transition-all duration-200 cursor-pointer;
+  }
+  
+  /* 输入框样式 - 改善触摸目标和对比度 */
+  .input-field {
+    @apply w-full px-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-love-pink focus:border-transparent transition-all duration-200 min-h-[44px] text-gray-800 placeholder-gray-500;
+  }
+  
+  .input-field:focus {
+    @apply shadow-md ring-2 ring-love-pink ring-opacity-50;
+  }
+  
+  /* 可访问性改进 */
+  .focus-visible:focus-visible {
+    @apply outline-2 outline-love-pink outline-offset-2;
+  }
+  
+  /* 高对比度模式支持 */
+  @media (prefers-contrast: high) {
+    .btn-primary {
+      @apply border-2 border-gray-800;
+    }
+    
+    .card {
+      @apply border-2 border-gray-300;
+    }
+    
+    .text-gray-600 {
+      @apply text-gray-800;
+    }
+  }
+  
+  /* 减少动画偏好支持 */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+  
+  /* 暗色模式基础支持 */
+  @media (prefers-color-scheme: dark) {
+    .card {
+      @apply bg-gray-800 text-white border-gray-700;
+    }
+    
+    .btn-secondary {
+      @apply bg-gray-800 border-gray-600 text-white hover:bg-gray-700;
+    }
+    
+    .input-field {
+      @apply bg-gray-800 border-gray-600 text-white placeholder-gray-400;
+    }
+  }
+  
+  /* 标签样式 */
+  .tag {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-love-pink bg-opacity-10 text-love-pink;
+  }
+  
+  /* 导航栏样式 */
+  .navbar {
+    @apply bg-white border-b border-gray-100 sticky top-0 z-50 backdrop-blur-sm bg-opacity-95;
+  }
+  
+  /* 底部导航样式 */
+  .bottom-nav {
+    @apply fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-50 safe-area-padding;
+  }
+  
+  /* 加载动画 */
+  .loading-spinner {
+    @apply inline-block w-6 h-6 border-2 border-gray-200 border-t-love-pink rounded-full animate-spin;
+  }
+  
+  /* 页面容器 */
+  .page-container {
+    @apply min-h-screen bg-love-cream pb-20 safe-area-padding;
+  }
+  
+  .content-container {
+    @apply max-w-lg mx-auto px-4 py-6;
+  }
+  
+  /* 渐变背景 */
+  .gradient-bg {
+    @apply bg-gradient-to-br from-love-pink to-love-purple;
+  }
+  
+  /* 文本渐变 */
+  .gradient-text {
+    @apply bg-gradient-to-r from-love-pink to-love-purple bg-clip-text text-transparent;
+  }
+}
+
+/* 工具类 */
+@layer utilities {
+  /* 隐藏滚动条 */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* 文本截断 */
+  .text-truncate {
+    @apply overflow-hidden whitespace-nowrap overflow-ellipsis;
+  }
+  
+  /* 多行文本截断 */
+  .text-truncate-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
+  .text-truncate-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+/* 自定义动画 */
+@keyframes heartbeat {
+  0% { transform: scale(1); }
+  14% { transform: scale(1.1); }
+  28% { transform: scale(1); }
+  42% { transform: scale(1.1); }
+  70% { transform: scale(1); }
+}
+
+.animate-heartbeat {
+  animation: heartbeat 1.5s ease-in-out infinite;
+}
+
+/* 响应式字体大小 */
+.responsive-text {
+  font-size: clamp(1rem, 4vw, 1.25rem);
+}
+
+/* 毛玻璃效果 */
+.glass-effect {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
