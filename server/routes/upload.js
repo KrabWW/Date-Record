@@ -2,15 +2,24 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const ffmpeg = require('fluent-ffmpeg');
-const ffmpegStatic = require('ffmpeg-static');
+const { execSync } = require('child_process');
 const { authenticateToken } = require('../middleware/auth');
 const sqlite3 = require('sqlite3').verbose();
 
 const router = express.Router();
 
-// 设置ffmpeg路径
-ffmpeg.setFfmpegPath(ffmpegStatic);
+// 检查系统FFmpeg是否可用
+const checkFFmpegAvailable = () => {
+  try {
+    execSync('ffmpeg -version', { stdio: 'ignore' });
+    return true;
+  } catch (error) {
+    console.warn('FFmpeg not found in system PATH, some video features may not work');
+    return false;
+  }
+};
+
+const FFMPEG_AVAILABLE = checkFFmpegAvailable();
 
 // 数据库连接
 const dbPath = path.join(__dirname, '..', 'database.db');
@@ -116,25 +125,37 @@ const updateUsedStorage = async (userId, fileSize) => {
 // 生成视频缩略图
 const generateThumbnail = (videoPath, outputPath) => {
   return new Promise((resolve, reject) => {
-    ffmpeg(videoPath)
-      .screenshots({
-        timestamps: ['50%'],
-        filename: path.basename(outputPath),
-        folder: path.dirname(outputPath),
-        size: '320x240'
-      })
-      .on('end', () => resolve(outputPath))
-      .on('error', reject);
+    if (!FFMPEG_AVAILABLE) {
+      reject(new Error('FFmpeg not available'));
+      return;
+    }
+    
+    try {
+      const command = `ffmpeg -i "${videoPath}" -ss 00:00:01 -vframes 1 -s 320x240 "${outputPath}"`;
+      execSync(command, { stdio: 'ignore' });
+      resolve(outputPath);
+    } catch (error) {
+      reject(error);
+    }
   });
 };
 
 // 获取视频时长
 const getVideoDuration = (videoPath) => {
   return new Promise((resolve, reject) => {
-    ffmpeg.ffprobe(videoPath, (err, metadata) => {
-      if (err) reject(err);
-      else resolve(Math.floor(metadata.format.duration));
-    });
+    if (!FFMPEG_AVAILABLE) {
+      reject(new Error('FFmpeg not available'));
+      return;
+    }
+    
+    try {
+      const command = `ffprobe -v quiet -show_entries format=duration -of csv=p=0 "${videoPath}"`;
+      const output = execSync(command, { encoding: 'utf8' });
+      const duration = Math.floor(parseFloat(output.trim()));
+      resolve(duration);
+    } catch (error) {
+      reject(error);
+    }
   });
 };
 
