@@ -69,7 +69,7 @@ router.post('/register', registerLimiter, async (req, res, next) => {
 });
 
 // 登录
-router.post('/login', loginLimiter, async (req, res, next) => {
+router.post('/login', /* loginLimiter */ async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
