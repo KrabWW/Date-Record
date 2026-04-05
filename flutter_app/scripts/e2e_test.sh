@@ -592,6 +592,18 @@ run_with_retry() {
 }
 
 # Pipeline: run scenarios in order with retry + auto-progression
+#
+# Stage flow:
+#   1. login          — 登录
+#   2. logout         — 注销（验证认证闭环）
+#   3. login          — 重新登录（验证再次登录）
+#   4. create-couple  — 创建空间
+#   5. join-couple    — 加入空间（无效邀请码）
+#   6. home           — 首页加载
+#
+# Each stage: pass → auto-progress, fail → retry (up to MAX_RETRIES),
+#              exhausted → [HUMAN_INTERVENTION_NEEDED] → STOP
+
 run_pipeline() {
     echo ""
     echo "╔══════════════════════════════════════════════╗"
@@ -599,47 +611,48 @@ run_pipeline() {
     echo "╚══════════════════════════════════════════════╝"
 
     local all_passed=true
-    local scenarios=(
-        "login"
-        "create-couple"
-        "join-couple"
-        "home"
+    local total_stages=6
+    local stage_num=0
+
+    # Define stages as: "func_name:args:label"
+    # Empty args means no extra arguments
+    local stages=(
+        "login::1/$total_stages 登录"
+        "logout::2/$total_stages 注销"
+        "login::3/$total_stages 重新登录"
+        "create_couple:Test Couple:4/$total_stages 创建空间"
+        "join_couple::5/$total_stages 加入空间（无效邀请码）"
+        "home::6/$total_stages 首页加载"
     )
 
-    local scenario_labels=(
-        "1/4 登录"
-        "2/4 创建空间"
-        "3/4 加入空间（无效邀请码）"
-        "4/4 首页加载"
-    )
-
-    for i in "${!scenarios[@]}"; do
-        local scenario="${scenarios[$i]}"
-        local label="${scenario_labels[$i]}"
+    for stage_def in "${stages[@]}"; do
+        local func_name="${stage_def%%:*}"
+        local rest="${stage_def#*:}"
+        local args="${rest%%:*}"
+        local label="${rest#*:}"
+        stage_num=$((stage_num + 1))
 
         echo ""
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo "  PIPELINE STAGE ${label}"
+        echo "  PIPELINE STAGE $label"
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
         local result=0
-        case "$scenario" in
-            login)          run_with_retry "login" ;;
-            create-couple)  run_with_retry "create_couple" "Test Couple" ;;
-            join-couple)    run_with_retry "join_couple" ;;
-            home)           run_with_retry "home" ;;
-        esac
-        result=$?
+        if [[ -n "$args" ]]; then
+            run_with_retry "$func_name" "$args" || result=$?
+        else
+            run_with_retry "$func_name" || result=$?
+        fi
 
         if ((result == 0)); then
-            echo "[PROGRESS] $scenario passed → next scenario"
+            echo "[PROGRESS] $label confirmed → next stage"
         elif ((result == 2)); then
-            echo "[PROGRESS] $scenario needs human intervention → STOPPING PIPELINE"
-            INTERVENTION_NEEDED+=("$scenario")
+            echo "[PROGRESS] $label needs human intervention → STOPPING PIPELINE"
+            INTERVENTION_NEEDED+=("$func_name")
             all_passed=false
             break
         else
-            echo "[PROGRESS] $scenario failed → STOPPING PIPELINE"
+            echo "[PROGRESS] $label failed → STOPPING PIPELINE"
             all_passed=false
             break
         fi
@@ -659,7 +672,9 @@ run_pipeline() {
         echo "  Blocked at: ${INTERVENTION_NEEDED[*]}"
         echo ""
         echo "  To resume after fixing:"
-        echo "    # Fix the code, hot reload, then:"
+        echo "    # Fix the code, hot reload, then re-run full pipeline:"
+        echo "    ./scripts/e2e_test.sh run"
+        echo "    # or run just the blocked stage:"
         echo "    ./scripts/e2e_test.sh ${INTERVENTION_NEEDED[0]}"
         return 4
     else
