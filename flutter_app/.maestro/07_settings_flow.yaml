@@ -1,0 +1,50 @@
+appId: com.love4lili.love4lili_flutter
+---
+# Test profile page and settings page navigation
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 10000
+
+# If on login page, login first
+- runFlow:
+    when:
+      visible: "记录你们的美好时光"
+    commands:
+      - tapOn: "邮箱"
+      - inputText: "maestro_test_2026@example.com"
+      - tapOn: "密码"
+      - inputText: "Test123456"
+      - tapOn: "登录"
+      - waitForAnimationToEnd:
+          timeout: 15000
+
+# Wait for home page to load
+- waitForAnimationToEnd:
+    timeout: 10000
+
+# Navigate to Profile tab
+- tapOn: "我的"
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: settings_flow_profile
+
+# Assert settings button is visible and tap it
+- assertVisible: "设置"
+- tapOn: "设置"
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: settings_flow_settings_page
+
+# Assert settings page elements
+- assertVisible: "设置"
+- assertVisible: "修改昵称"
+- assertVisible: "邮箱"
+- takeScreenshot: settings_flow_details
+
+# Go back to profile page
+- pressBack
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: "设置"
+- assertVisible: "退出登录"
+- takeScreenshot: settings_flow_back_to_profile
