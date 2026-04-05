@@ -1,0 +1,60 @@
+appId: com.love4lili.love4lili_flutter
+---
+# Test creating a new dating record from the home page
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 10000
+
+# If on login page, login first
+- runFlow:
+    when:
+      visible: "记录你们的美好时光"
+    commands:
+      - tapOn: "邮箱"
+      - inputText: "maestro_test_2026@example.com"
+      - tapOn: "密码"
+      - inputText: "Test123456"
+      - tapOn: "登录"
+      - waitForAnimationToEnd:
+          timeout: 15000
+
+# Wait for home page to load
+- waitForAnimationToEnd:
+    timeout: 10000
+- takeScreenshot: records_flow_start
+
+# Navigate to record creation via quick action button
+- runFlow:
+    when:
+      visible: "记录约会"
+    commands:
+      - tapOn: "记录约会"
+      - waitForAnimationToEnd:
+          timeout: 5000
+
+# Assert on record edit page
+- assertVisible: "添加记录"
+- takeScreenshot: records_edit_page
+
+# Fill in the title field
+- tapOn: "给这次约会起个标题吧..."
+- inputText: "Maestro Test Record"
+- hideKeyboard
+
+# Fill in the location field
+- tapOn: "在哪里度过了美好时光？"
+- inputText: "Shanghai"
+- hideKeyboard
+- takeScreenshot: records_form_filled
+
+# Tap create button
+- tapOn: "创建记录"
+- waitForAnimationToEnd:
+    timeout: 15000
+- takeScreenshot: records_after_create
+
+# Go back to records list
+- pressBack
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: records_list_after_create
