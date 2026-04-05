@@ -87,7 +87,25 @@ cd client && npm run lint  # ESLint 检查
 
 照片和视频存储在 `server/uploads/`。视频处理依赖系统安装的 FFmpeg（非 npm 包，已替换 ffmpeg-static）。`deploy-to-server.sh` 脚本会在服务器上安装 FFmpeg。
 
-## Flutter App 集成测试（Patrol）
+## Flutter App Bug Hunting（自动化 Bug 发现）
+
+```bash
+cd flutter_app
+
+# 运行所有 Maestro flow，自动收集 bug 证据
+./scripts/bug_hunt.sh
+
+# 只跑指定 flow
+./scripts/bug_hunt.sh --flow=02
+
+# 跳过成功截图（更快）
+./scripts/bug_hunt.sh --skip-pass
+```
+
+Bug 证据输出到 `flutter_app/bug_reports/YYYY-MM-DD/`，包含截图、logcat 和描述。
+设计文档：`docs/superpowers/specs/2026-04-05-bug-hunting-design.md`
+
+## Flutter App 集成测试（Patrol — 已弃用）
 
 ### 启动模拟器
 
