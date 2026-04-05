@@ -39,6 +39,7 @@ export PATH="$PATH:$HOME/Library/Android/sdk/platform-tools"
 # Parse arguments
 RUN_FLOW=""
 SKIP_PASS=false
+MAX_RETRIES=3
 
 for arg in "$@"; do
     case "$arg" in
@@ -48,17 +49,39 @@ for arg in "$@"; do
         --skip-pass)
             SKIP_PASS=true
             ;;
+        --max-retries=*)
+            MAX_RETRIES="${arg#--max-retries=}"
+            ;;
         *)
             echo "Unknown option: $arg"
-            echo "Usage: $0 [--flow=NN] [--skip-pass]"
+            echo "Usage: $0 [--flow=NN] [--skip-pass] [--max-retries=N]"
             exit 2
             ;;
     esac
 done
 
+# --- Module Definitions ---
+# Each module groups related flows. Once a module passes, skip remaining retries.
+# Format: "flow_prefix:module_name"
+MODULES=(
+    "01:认证模块"
+    "02:情侣空间模块"
+    "03:情侣空间模块"
+    "04:主流程模块"
+    "05:记录模块"
+    "06:相册模块"
+    "07:个人设置模块"
+    "08:认证模块"
+)
+
+# Module state tracking
+declare -A MODULE_STATUS  # "verified" | "failed" | "needs_manual"
+declare -A MODULE_RETRIES
+
 # --- Tracking ---
 PASSED=()
 FAILED=()
+NEEDS_MANUAL=()
 
 # ============================================================
 # Pre-flight Checks
@@ -178,8 +201,38 @@ run_flow() {
     local flow_name
     flow_name=$(basename "$flow_file" .yaml | sed 's/^[0-9]*_//')
 
+    # Determine module for this flow
+    local flow_prefix
+    flow_prefix=$(basename "$flow_file" | grep -oE '^[0-9]+' || echo "00")
+    local module_name=""
+    for m in "${MODULES[@]}"; do
+        local m_prefix="${m%%:*}"
+        if [[ "$m_prefix" == "$flow_prefix" ]]; then
+            module_name="${m#*:}"
+            break
+        fi
+    done
+
+    # Skip if module is already verified
+    if [[ -n "$module_name" && "${MODULE_STATUS[$module_name]:-}" == "verified" ]]; then
+        echo "[SKIP] $flow_name — module '$module_name' already verified"
+        return 0
+    fi
+
+    # Check retry limit
+    local retries="${MODULE_RETRIES[$flow_name]:-0}"
+    if [[ "$retries" -ge "$MAX_RETRIES" ]]; then
+        echo "[NEEDS_MANUAL] $flow_name — exceeded $MAX_RETRIES retries, requires human intervention"
+        MODULE_STATUS[$module_name]="needs_manual"
+        NEEDS_MANUAL+=("$flow_name ($module_name)")
+        return 1
+    fi
+
     echo "---"
     echo "Running: $(basename "$flow_file") ($flow_name)"
+    if [[ -n "$module_name" ]]; then
+        echo "Module: $module_name (attempt $((retries + 1))/$MAX_RETRIES)"
+    fi
     echo ""
 
     # Clear logcat before each flow
@@ -198,6 +251,12 @@ run_flow() {
         echo "[PASS] $flow_name"
         PASSED+=("$flow_name")
 
+        # Mark module as verified
+        if [[ -n "$module_name" ]]; then
+            MODULE_STATUS[$module_name]="verified"
+            echo "  ✓ Module '$module_name' verified — remaining flows in this module will be skipped"
+        fi
+
         # Optionally take screenshot on pass
         if [[ "$SKIP_PASS" == "false" ]]; then
             local pass_dir="$BUG_REPORTS_DIR/passes"
@@ -206,8 +265,14 @@ run_flow() {
             adb -s "$EMU_ID" pull /sdcard/screen.png "$pass_dir/${flow_name}.png" 2>/dev/null || true
         fi
     else
-        echo "[FAIL] $flow_name (exit code: $exit_code)"
-        FAILED+=("$flow_name")
+        MODULE_RETRIES[$flow_name]="$((retries + 1))"
+        echo "[FAIL] $flow_name (exit code: $exit_code, attempt $((retries + 1))/$MAX_RETRIES)"
+
+        if [[ "$((retries + 1))" -ge "$MAX_RETRIES" ]]; then
+            MODULE_STATUS[$module_name]="needs_manual"
+            NEEDS_MANUAL+=("$flow_name ($module_name)")
+            echo "  ⚠ Max retries reached — marking module '$module_name' as needs_manual"
+        fi
 
         # Collect evidence
         collect_evidence "$flow_file" "$flow_name" "$exit_code" "$maestro_output"
@@ -224,8 +289,25 @@ print_summary() {
     echo "=========================================="
     echo "  BUG HUNT SUMMARY"
     echo "=========================================="
-    echo "  Passed: ${#PASSED[@]}"
-    echo "  Failed: ${#FAILED[@]}"
+    echo "  Passed:       ${#PASSED[@]}"
+    echo "  Failed:       ${#FAILED[@]}"
+    echo "  Needs manual: ${#NEEDS_MANUAL[@]}"
+    echo ""
+
+    # Module status
+    echo "  Module Status:"
+    for m in "${MODULES[@]}"; do
+        local module_name="${m#*:}"
+        local status="${MODULE_STATUS[$module_name]:-pending}"
+        local icon="?"
+        case "$status" in
+            verified)  icon="✓" ;;
+            needs_manual) icon="⚠" ;;
+            failed)    icon="✗" ;;
+            *)         icon="○" ;;
+        esac
+        echo "    $icon $module_name ($status)"
+    done
     echo ""
 
     if [[ ${#PASSED[@]} -gt 0 ]]; then
@@ -244,17 +326,29 @@ print_summary() {
         echo ""
     fi
 
+    if [[ ${#NEEDS_MANUAL[@]} -gt 0 ]]; then
+        echo "  ⚠ Needs manual intervention:"
+        for f in "${NEEDS_MANUAL[@]}"; do
+            echo "    $f"
+        done
+        echo ""
+        echo "  → Please review bug_reports/ and fix manually, then re-run"
+        echo ""
+    fi
+
     echo "=========================================="
 
-    if [[ ${#FAILED[@]} -eq 0 ]]; then
+    if [[ ${#FAILED[@]} -eq 0 && ${#NEEDS_MANUAL[@]} -eq 0 ]]; then
         echo "[RESULT] ALL PASSED"
+    elif [[ ${#NEEDS_MANUAL[@]} -gt 0 ]]; then
+        echo "[RESULT] ${#NEEDS_MANUAL[@]} MODULES NEED MANUAL INTERVENTION"
     else
         echo "[RESULT] ${#FAILED[@]} FAILED"
     fi
 
     echo "=========================================="
 
-    [[ ${#FAILED[@]} -eq 0 ]]
+    [[ ${#FAILED[@]} -eq 0 && ${#NEEDS_MANUAL[@]} -eq 0 ]]
 }
 
 # ============================================================
