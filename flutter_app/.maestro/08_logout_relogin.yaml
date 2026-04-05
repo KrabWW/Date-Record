@@ -1,0 +1,57 @@
+appId: com.love4lili.love4lili_flutter
+---
+# Test logout and re-login flow
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 10000
+
+# If on login page, login first
+- runFlow:
+    when:
+      visible: "记录你们的美好时光"
+    commands:
+      - tapOn: "邮箱"
+      - inputText: "maestro_test_2026@example.com"
+      - tapOn: "密码"
+      - inputText: "Test123456"
+      - tapOn: "登录"
+      - waitForAnimationToEnd:
+          timeout: 15000
+
+# Wait for home page to load
+- waitForAnimationToEnd:
+    timeout: 10000
+
+# Navigate to Profile tab
+- tapOn: "我的"
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: logout_flow_profile
+
+# Tap logout button
+- assertVisible: "退出登录"
+- tapOn: "退出登录"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: logout_flow_dialog
+
+# Confirm logout in dialog
+- assertVisible: "确定要退出登录吗？"
+- tapOn: "退出"
+- waitForAnimationToEnd:
+    timeout: 10000
+- takeScreenshot: logout_flow_after_logout
+
+# Assert back on login page
+- assertVisible: "登录"
+- assertVisible: "没有账号？"
+
+# Re-login with credentials
+- tapOn: "邮箱"
+- inputText: "maestro_test_2026@example.com"
+- tapOn: "密码"
+- inputText: "Test123456"
+- tapOn: "登录"
+- waitForAnimationToEnd:
+    timeout: 15000
+- takeScreenshot: logout_flow_after_relogin
