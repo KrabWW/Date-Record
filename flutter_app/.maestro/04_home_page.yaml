@@ -1,0 +1,65 @@
+appId: com.love4lili.love4lili_flutter
+---
+# Navigate through all bottom tabs: Home -> Records -> Gallery -> Profile -> Home
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 10000
+
+# If on login page, login first
+- runFlow:
+    when:
+      visible: "记录你们的美好时光"
+    commands:
+      - tapOn: "邮箱"
+      - inputText: "maestro_test_2026@example.com"
+      - tapOn: "密码"
+      - inputText: "Test123456"
+      - tapOn: "登录"
+      - waitForAnimationToEnd:
+          timeout: 15000
+
+# Wait for home page to fully load
+- waitForAnimationToEnd:
+    timeout: 10000
+- takeScreenshot: home_page_loaded
+
+# Assert home page quick action buttons
+- runFlow:
+    when:
+      visible: "记录约会"
+    commands:
+      - assertVisible: "记录约会"
+      - assertVisible: "愿望清单"
+      - assertVisible: "相册"
+      - takeScreenshot: home_quick_actions
+
+# Navigate to Records tab
+- tapOn: "记录"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: "搜索记录标题、地点、描述..."
+- takeScreenshot: records_tab
+
+# Navigate to Gallery tab
+- tapOn: "相册"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: "全部"
+- assertVisible: "照片"
+- assertVisible: "视频"
+- takeScreenshot: gallery_tab
+
+# Navigate to Profile tab
+- tapOn: "我的"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: "设置"
+- assertVisible: "退出登录"
+- takeScreenshot: profile_tab
+
+# Navigate back to Home tab
+- tapOn: "首页"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: "记录约会"
+- takeScreenshot: back_to_home
