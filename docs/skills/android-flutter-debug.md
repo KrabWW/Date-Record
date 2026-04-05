@@ -217,34 +217,65 @@ Use `flutter_app/scripts/e2e_test.sh` for structured end-to-end testing without 
 
 Patrol builds a full test APK (2-5 min), requires Android Test Orchestrator, and `pumpAndTrySettle` / `waitUntilVisible` can hang indefinitely on slow network. The adb approach uses the already-running debug app and interacts via CLI — seconds per cycle, not minutes.
 
-### The Loop
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│  1. cd flutter_app && flutter run -d emulator-5554  (bg)    │
-│  2. ./scripts/e2e_test.sh login                             │
-│  3. Read the RESULT line:                                    │
-│     ├─ [RESULT] PASSED → next scenario                       │
-│     └─ [RESULT] FAILED → diagnose:                           │
-│        a. Read the [SCREENSHOT] .png file (Read tool)        │
-│        b. Read the [LOGCAT] .txt file                        │
-│        c. Identify root cause                                │
-│        d. Fix the code                                       │
-│        e. Hot reload: send 'r' to flutter process            │
-│           (or full rebuild if needed)                        │
-│        f. ./scripts/e2e_test.sh login  → back to step 2     │
-└──────────────────────────────────────────────────────────────┘
-```
-
-### Available Scenarios
+### Pipeline Mode (recommended)
 
 ```bash
 cd flutter_app
-./scripts/e2e_test.sh login                # Test login flow
+./scripts/e2e_test.sh run                          # Full pipeline with retry + auto-progression
+./scripts/e2e_test.sh run --max-retries 5           # Custom retry limit
+```
+
+Pipeline stages (runs in order, auto-progresses on pass):
+```
+Stage 1/4: login          -> 注册登录
+Stage 2/4: create-couple  -> 创建情侣空间
+Stage 3/4: join-couple    -> 加入空间（无效邀请码验证）
+Stage 4/4: home           -> 首页加载
+```
+
+**Flow:**
+```
++----------------------------------------------------------------+
+|  ./scripts/e2e_test.sh run                                     |
+|                                                                |
+|  Stage 1/4: login                                             |
+|    +-- [CONFIRMED] login -> auto-progress to stage 2           |
+|    +-- [SCENARIO_FAILED] -> retry (up to MAX_RETRIES=3)        |
+|    +-- [HUMAN_INTERVENTION_NEEDED] after 3 failures -> STOP    |
+|        Claude reads screenshots + logs, fixes code,            |
+|        hot reloads, then runs: ./scripts/e2e_test.sh login     |
+|                                                                |
+|  Stage 2/4: create-couple  (only if stage 1 passed)           |
+|  Stage 3/4: join-couple    (only if stage 2 passed)           |
+|  Stage 4/4: home           (only if stage 3 passed)           |
+|                                                                |
+|  [RESULT] ALL PASSED                                          |
++----------------------------------------------------------------+
+```
+
+### Key Output Markers (parseable by Claude)
+
+| Marker | Meaning | Action |
+|--------|---------|--------|
+| `[CONFIRMED] scenario` | Scenario passed, verified | Auto-progress to next |
+| `[SCENARIO_FAILED] scenario (attempt N/M)` | Failed, will retry | Wait for next attempt |
+| `[RETRY] scenario -- attempt N/M` | Retrying | Wait for result |
+| `[HUMAN_INTERVENTION_NEEDED] scenario` | Max retries exceeded | Read screenshots + logs, fix code |
+| `[PROGRESS] scenario passed -> next scenario` | Moving on | No action needed |
+| `[PROGRESS] scenario needs human intervention -> STOPPING` | Pipeline halted | Fix and resume manually |
+| `[RESULT] ALL PASSED` | All stages passed | Done |
+| `[RESULT] INTERVENTION_NEEDED` | Blocked, needs fix | Fix + re-run the blocked scenario |
+
+### Single Scenario Mode
+
+```bash
+./scripts/e2e_test.sh login                # Test login flow only
 ./scripts/e2e_test.sh create-couple        # Test couple space creation
+./scripts/e2e_test.sh join-couple          # Test join with invalid code
 ./scripts/e2e_test.sh home                 # Test home page loads
 ./scripts/e2e_test.sh add-record           # Test creating a record
-./scripts/e2e_test.sh full                 # All scenarios
+./scripts/e2e_test.sh logout               # Test logout flow
+./scripts/e2e_test.sh full                 # All scenarios (no retry, no stop)
 ./scripts/e2e_test.sh reset                # Clear logcat + fresh screenshot
 ```
 
@@ -256,6 +287,18 @@ cd flutter_app
 | `EMAIL` | `krab@qq.com` | Login email |
 | `PASSWORD` | `123456` | Login password |
 | `SCREENSHOT_DIR` | `/tmp/flutter_e2e` | Where screenshots are saved |
+| `MAX_RETRIES` | `3` | Max retries per scenario before human intervention |
+
+### Confirmation Mechanism
+
+Each scenario ends with `confirm_scenario()` which:
+1. Waits 2s for UI to settle
+2. Takes a `_confirmed.png` screenshot
+3. Captures `_confirm_logcat.txt`
+4. Checks for Flutter/Dart errors in logcat
+5. Outputs `[CONFIRMED]` on success, or `[FAIL]` on error
+
+This prevents the script from endlessly looping on a passed scenario.
 
 ### Hot Reload vs Full Rebuild
 
@@ -265,41 +308,19 @@ cd flutter_app
 | New dependency, asset, or native change | Full rebuild (`flutter clean && flutter run`) | 2-5 min |
 | Route/config change | Hot restart (`R` in flutter process) | ~10s |
 
-### Output Format (parseable)
-
-```
-[STEP] 1: Screenshot — login page
-[SCREENSHOT] /tmp/flutter_e2e/login_01_page.png
-[STEP] 2: Tap email field
-[STEP] 3: Clear & type email: krab@qq.com
-...
-[STEP] 8: Check for errors
-[PASS] No errors in logcat
-[RESULT] PASSED
-```
-
-Or on failure:
-```
-[STEP] 8: Check for errors
-[ERRORS_FOUND]
-type 'List<dynamic>' is not a subtype of type 'Map<String, dynamic>?'
-[FAIL] Errors detected → Review login_logcat.txt and login_03_result.png
-[RESULT] FAILED
-```
-
 ### Coordinate Reference (1080x2400 emulator)
 
 The script uses hardcoded coordinates. If the UI layout changes, adjust in `e2e_test.sh`:
 
 | Element | Approximate (x, y) |
 |---------|-------------------|
-| Login email field | (540, 750) |
-| Login password field | (540, 860) |
-| Login button | (540, 970) |
-| Couple setup — create button | (540, 850) |
-| Create couple — name field | (540, 650) |
-| Create couple — date field | (540, 750) |
-| Create couple — submit | (540, 950) |
+| Login email field | (540, 720) |
+| Login password field | (540, 870) |
+| Login button | (540, 1020) |
+| Couple setup -- create button | (540, 920) |
+| Create couple -- name field | (540, 680) |
+| Create couple -- date field | (540, 800) |
+| Create couple -- submit | (540, 1050) |
 
 To find correct coordinates: take a screenshot, read it with the Read tool, and estimate from the image dimensions.
 
@@ -307,13 +328,14 @@ To find correct coordinates: take a screenshot, read it with the Read tool, and 
 
 | Thought | Reality |
 |---------|---------|
-| "The logs are clean, no errors" | Flutter framework exceptions may not appear in Dio logcat — check the screen |
+| "The logs are clean, no errors" | Flutter framework exceptions may not appear in Dio logcat -- check the screen |
 | "I'll just read the code to find the bug" | Screenshot first. See what the user sees. |
 | "Let me fix without confirming the error" | Always confirm the root cause via logs or OCR before editing code |
 | "I can type `@` with adb input text" | `@` requires `keyevent 77`, direct text input fails silently |
 | "The emulator can reach localhost:3000" | Emulator needs `10.0.2.2` to reach the host machine |
+| "I'll keep retrying the same scenario" | After MAX_RETRIES (default 3), STOP and request human intervention |
 
-## Quick Reference — adb Commands Cheat Sheet
+## Quick Reference -- adb Commands Cheat Sheet
 
 ```bash
 # === SETUP ===
@@ -342,9 +364,9 @@ adb -s emulator-5554 logcat -d | grep "<PID>" | grep -i "exception" | tail -20
 
 > **Instructions**: When you discover a new debugging pattern during a session, append it to this list. Each entry should capture: date, symptom, root cause, and fix. This builds institutional knowledge over time.
 
-### 2026-04-05 — Session 1: Love4Lili Flutter App
+### 2026-04-05 -- Session 1: Love4Lili Flutter App
 
-**P1: Date picker crash — missing localizations**
+**P1: Date picker crash -- missing localizations**
 - Symptom: App crashes (red screen) when tapping date picker
 - Root cause: `showDatePicker` uses `locale: Locale('zh', 'CN')` but `flutter_localizations` is not configured
 - Fix: Add `flutter_localizations` SDK dependency in `pubspec.yaml` + add `localizationsDelegates`, `supportedLocales`, `locale` in `MaterialApp.router`
@@ -381,7 +403,7 @@ adb -s emulator-5554 logcat -d | grep "<PID>" | grep -i "exception" | tail -20
 - Root cause: GoRouter's `refreshListenable` with `ref.listen` doesn't reliably trigger redirect. When `coupleState.isLoading` is true during redirect evaluation, it returns null and stays on `/auth`.
 - Fix: Add explicit `context.go('/')` or `context.go('/couple-setup')` in login page after successful login, don't rely solely on GoRouter redirect
 
-**P8: `flutter run` from wrong directory — changes not reflected**
+**P8: `flutter run` from wrong directory -- changes not reflected**
 - Symptom: Code changes (debug prints, navigation fixes) don't appear in the running app
 - Root cause: `flutter run` was executed from project root `/Date-Record/` instead of `flutter_app/` subdirectory. Flutter silently used the wrong pubspec or cached old build.
 - Fix: ALWAYS `cd flutter_app` before running `flutter run`. Verify with `flutter clean && flutter run` from the correct directory. Check debug print output in logcat to confirm new code is running.
@@ -392,19 +414,28 @@ adb -s emulator-5554 logcat -d | grep "<PID>" | grep -i "exception" | tail -20
 - Fix: Check type before casting: `stats['mood_distribution'] is Map ? ... : <String, dynamic>{}`
 - Files: `lib/pages/home/home_page.dart:371`
 
----
-<!-- Append new patterns below this line. Format:
-
-### 2026-04-05 — Session 2: Love4Lili Flutter App
+### 2026-04-05 -- Session 2: Love4Lili Flutter App
 
 **P10: Patrol test runner hangs on slow network / async waits**
 - Symptom: `patrol test` hangs indefinitely, no output, app appears frozen
 - Root cause: `pumpAndTrySettle` and `waitUntilVisible` block until widget tree settles. On slow network or infinite loading states, they never return. Patrol also requires full APK rebuild (2-5 min) per run, making iteration too slow for debug loops.
-- Fix: Use `flutter_app/scripts/e2e_test.sh` — adb-based test runner that interacts with the already-running debug app. No rebuild needed for Dart-only fixes (hot reload). Hot reload cycle: ~2s vs Patrol's ~5min.
+- Fix: Use `flutter_app/scripts/e2e_test.sh` -- adb-based test runner that interacts with the already-running debug app. No rebuild needed for Dart-only fixes (hot reload). Hot reload cycle: ~2s vs Patrol's ~5min.
 - Files: `flutter_app/scripts/e2e_test.sh`, SKILL.md Phase 6
 
+**P11: Script loops on passed scenario -- no confirmation mechanism**
+- Symptom: After login succeeds, the debug loop keeps re-running login instead of moving to create-couple
+- Root cause: No confirmation step to verify scenario success and trigger progression. The script just reported results without deciding whether to move on.
+- Fix: Added `confirm_scenario()` function + `run_pipeline` mode with auto-progression. Each scenario ends with a confirmation check (screenshot + logcat). On `[CONFIRMED]`, the pipeline automatically advances to the next stage.
+- Files: `flutter_app/scripts/e2e_test.sh`
+
+**P12: Infinite retry without escalation -- no human intervention**
+- Symptom: Script retries a failing scenario indefinitely, never stopping
+- Root cause: No retry limit. If a bug requires code changes beyond automated capability, the loop runs forever.
+- Fix: Added `MAX_RETRIES` (default 3). After exhausting retries, outputs `[HUMAN_INTERVENTION_NEEDED]` and stops the pipeline. Claude reads the screenshots/logs, fixes the code, and resumes manually.
+
+---
 <!-- Append new patterns below this line. Format:
-### YYYY-MM-DD — Session N: Project Name
+### YYYY-MM-DD -- Session N: Project Name
 
 **PN: Short title**
 - Symptom: What the user sees
