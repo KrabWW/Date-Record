@@ -1,0 +1,52 @@
+appId: com.love4lili.love4lili_flutter
+---
+# Test gallery page filter tabs: All, Photos, Videos
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 10000
+
+# If on login page, login first
+- runFlow:
+    when:
+      visible: "记录你们的美好时光"
+    commands:
+      - tapOn: "邮箱"
+      - inputText: "maestro_test_2026@example.com"
+      - tapOn: "密码"
+      - inputText: "Test123456"
+      - tapOn: "登录"
+      - waitForAnimationToEnd:
+          timeout: 15000
+
+# Wait for home page to load
+- waitForAnimationToEnd:
+    timeout: 10000
+
+# Navigate to Gallery tab
+- tapOn: "相册"
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: gallery_flow_start
+
+# Assert all filter tabs are visible
+- assertVisible: "全部"
+- assertVisible: "照片"
+- assertVisible: "视频"
+
+# Tap Photos filter
+- tapOn: "照片"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: gallery_filter_photos
+
+# Tap Videos filter
+- tapOn: "视频"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: gallery_filter_videos
+
+# Switch back to All filter
+- tapOn: "全部"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: gallery_filter_all
