@@ -6,6 +6,7 @@ import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/couple_provider.dart';
 import '../../widgets/storage_info.dart';
+import '../../widgets/bottom_navigation.dart';
 
 /// 个人中心页面
 class ProfilePage extends ConsumerWidget {
@@ -19,6 +20,21 @@ class ProfilePage extends ConsumerWidget {
     final partner = ref.watch(partnerProvider);
 
     return Scaffold(
+      bottomNavigationBar: AppBottomNavigation(
+        currentIndex: 3,
+        onTap: (index) {
+          switch (index) {
+            case 0:
+              context.go('/');
+            case 1:
+              context.go('/records');
+            case 2:
+              context.go('/gallery');
+            case 3:
+              context.go('/profile');
+          }
+        },
+      ),
       body: CustomScrollView(
         slivers: [
           // 顶部渐变背景
@@ -351,7 +367,15 @@ class ProfilePage extends ConsumerWidget {
               icon: Icons.group_add,
               iconColor: AppTheme.lovePink,
               title: '创建情侣空间',
-              onTap: () => context.push('/couple-setup'),
+              onTap: () => context.push('/couple-setup/create'),
+            ),
+          if (hasCouple)
+            _buildActionItem(
+              context,
+              icon: Icons.favorite,
+              iconColor: AppTheme.lovePink,
+              title: '管理情侣空间',
+              onTap: () => context.push('/settings'),
             ),
         ],
       ),

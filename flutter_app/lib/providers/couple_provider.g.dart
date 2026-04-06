@@ -6,7 +6,7 @@ part of 'couple_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$hasCoupleHash() => r'f6fec9ae1b4889f87e9df01496f81a773ce9b2e5';
+String _$hasCoupleHash() => r'a1a2b43e626863a7c72ef2ecfaf7def149d57d49';
 
 /// 是否有情侣空间 Provider
 ///

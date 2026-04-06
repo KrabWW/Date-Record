@@ -94,7 +94,7 @@ class CurrentCouple extends _$CurrentCouple {
 @riverpod
 bool hasCouple(HasCoupleRef ref) {
   final couple = ref.watch(currentCoupleProvider);
-  return couple.value?.isComplete ?? false;
+  return couple.value != null;
 }
 
 /// 获取伴侣信息 Provider
