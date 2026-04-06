@@ -39,15 +39,14 @@ class _CreateCouplePageState extends ConsumerState<CreateCouplePage> {
     });
 
     try {
-      await ref.read(currentCoupleProvider.notifier).createCouple(
-            coupleName: _coupleNameController.text.trim(),
-            anniversaryDate: _anniversaryDate,
-          );
+      final couple = await ref.read(currentCoupleProvider.notifier).createCouple(
+        coupleName: _coupleNameController.text.trim(),
+        anniversaryDate: _anniversaryDate,
+      );
 
-      final coupleState = ref.read(currentCoupleProvider);
       if (mounted) {
         setState(() {
-          _createdCouple = coupleState.value;
+          _createdCouple = couple;
         });
       }
     } catch (e) {

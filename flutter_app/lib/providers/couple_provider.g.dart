@@ -64,7 +64,7 @@ final partnerIdProvider = AutoDisposeProvider<int?>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef PartnerIdRef = AutoDisposeProviderRef<int?>;
-String _$currentCoupleHash() => r'5cdec5c0c61ae90f7452308ae107cc313e328134';
+String _$currentCoupleHash() => r'3aef96078330e02a60e00abff3410184290ea170';
 
 /// 当前情侣空间 Provider
 ///

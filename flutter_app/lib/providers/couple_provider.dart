@@ -16,18 +16,8 @@ class CurrentCouple extends _$CurrentCouple {
 
   @override
   Future<Couple?> build() async {
-    // 尝试从本地存储加载
-    final prefs = await SharedPreferences.getInstance();
-    final coupleJson = prefs.getString(StorageKeys.couple);
-    if (coupleJson != null) {
-      try {
-        // TODO: Parse and return couple from JSON
-      } catch (e) {
-        // Ignore parse errors
-      }
-    }
-
-    // 检查用户是否已认证
+    // 监听用户状态变化，自动刷新 couple 数据
+    // 使用 ref.watch 使得用户登录/登出时 provider 自动 rebuild
     final user = ref.watch(currentUserProvider);
     if (user.value == null) return null;
 
@@ -39,26 +29,24 @@ class CurrentCouple extends _$CurrentCouple {
     }
   }
 
-  /// 创建情侣空间
-  Future<void> createCouple({
+  /// 创建情侣空间 — 直接返回 Couple，不依赖 state 读取
+  Future<Couple> createCouple({
     required String coupleName,
     DateTime? anniversaryDate,
   }) async {
-    state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() async {
-      return await _service.create(
-        coupleName: coupleName,
-        anniversaryDate: anniversaryDate,
-      );
-    });
+    final couple = await _service.create(
+      coupleName: coupleName,
+      anniversaryDate: anniversaryDate,
+    );
+    state = AsyncValue.data(couple);
+    return couple;
   }
 
-  /// 加入情侣空间
-  Future<void> joinCouple(String inviteCode) async {
-    state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() async {
-      return await _service.join(inviteCode);
-    });
+  /// 加入情侣空间 — 直接返回 Couple
+  Future<Couple> joinCouple(String inviteCode) async {
+    final couple = await _service.join(inviteCode);
+    state = AsyncValue.data(couple);
+    return couple;
   }
 
   /// 更新情侣空间
@@ -79,12 +67,12 @@ class CurrentCouple extends _$CurrentCouple {
 
   /// 删除情侣空间
   Future<void> deleteCouple() async {
-    state = const AsyncValue.loading();
     try {
       await _service.delete();
       state = const AsyncValue.data(null);
-    } catch (e) {
-      state = AsyncValue.error(e, StackTrace.current);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
     }
   }
 
