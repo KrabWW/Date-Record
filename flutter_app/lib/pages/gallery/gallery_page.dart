@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:go_router/go_router.dart';
 import '../../config/theme.dart';
 import '../../config/api_config.dart';
 import '../../config/constants.dart';
 import '../../models/media.dart';
 import '../../providers/couple_provider.dart';
 import '../../services/media_service.dart';
+import '../../widgets/bottom_navigation.dart';
 import '../../widgets/storage_info.dart';
 import 'widgets/media_preview_dialog.dart';
 import 'widgets/media_upload_sheet.dart';
@@ -419,6 +421,21 @@ class _GalleryPageState extends ConsumerState<GalleryPage> {
               )
             : const Icon(Icons.add),
         label: Text(_isUploading ? '上传中...' : '上传'),
+      ),
+      bottomNavigationBar: AppBottomNavigation(
+        currentIndex: 2,
+        onTap: (index) {
+          switch (index) {
+            case 0:
+              context.go('/');
+            case 1:
+              context.go('/records');
+            case 2:
+              context.go('/gallery');
+            case 3:
+              context.go('/profile');
+          }
+        },
       ),
     );
   }
